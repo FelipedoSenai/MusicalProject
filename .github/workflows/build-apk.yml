@@ -3,7 +3,7 @@ name: Build Android APK
 on:
   push:
     branches: [main, master]
-  workflow_dispatch: # permite rodar manualmente pelo site do GitHub
+  workflow_dispatch:
 
 jobs:
   build:
@@ -11,37 +11,73 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Baixa o código do repositório
       - name: Checkout código
         uses: actions/checkout@v4
 
-      # 2. Configura Node.js
       - name: Configurar Node.js 18
         uses: actions/setup-node@v4
         with:
           node-version: '18'
 
-      # 3. Configura Java 17 (necessário para o Gradle/Android)
       - name: Configurar Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      # 4. Instala dependências do projeto
-      - name: Instalar dependências npm
+      - name: Instalar dependências
         run: npm install
 
-      # 5. Injeta a chave da API do YouTube (salva nos Secrets do GitHub)
+      - name: Instalar React Native CLI
+        run: npm install -g react-native-cli @react-native-community/cli
+
       - name: Injetar YouTube API Key
         run: |
           sed -i "s/SUA_CHAVE_API_AQUI/${{ secrets.YOUTUBE_API_KEY }}/g" src/utils/youtubeApi.ts
 
-      # 6. Permissão de execução para o Gradle
+      - name: Gerar pasta android completa
+        run: |
+          npx react-native init TempApp --version 0.73.4 --skip-install
+          cp -r TempApp/android ./android
+          rm -rf TempApp
+
+      - name: Copiar arquivos do app para android
+        run: |
+          cp android/app/src/main/AndroidManifest.xml android/app/src/main/AndroidManifest.xml.bak
+          cat > android/app/src/main/AndroidManifest.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.INTERNET" />
+            <uses-permission android:name="android.permission.WAKE_LOCK" />
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+            <application
+              android:name=".MainApplication"
+              android:label="YTunes"
+              android:icon="@mipmap/ic_launcher"
+              android:roundIcon="@mipmap/ic_launcher_round"
+              android:allowBackup="false"
+              android:theme="@style/AppTheme"
+              android:hardwareAccelerated="true">
+              <activity
+                android:name=".MainActivity"
+                android:label="YTunes"
+                android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+                android:launchMode="singleTask"
+                android:windowSoftInputMode="adjustResize"
+                android:exported="true">
+                <intent-filter>
+                  <action android:name="android.intent.action.MAIN" />
+                  <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+              </activity>
+            </application>
+          </manifest>
+          EOF
+
       - name: Permissão Gradle
         run: chmod +x android/gradlew
 
-      # 7. Cache do Gradle para acelerar builds futuros
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
@@ -51,7 +87,6 @@ jobs:
           key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: gradle-
 
-      # 8. Compila o APK de release
       - name: Build APK Release
         run: |
           cd android
@@ -59,16 +94,9 @@ jobs:
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
 
-      # 9. Disponibiliza o APK para download
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: YTunes-release
+          name: YTunes-APK
           path: android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30
-
-      # 10. Mostra o tamanho do APK gerado
-      - name: Info do APK
-        run: |
-          echo "✅ APK gerado com sucesso!"
-          ls -lh android/app/build/outputs/apk/release/app-release.apk
