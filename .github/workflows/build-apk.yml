@@ -37,7 +37,9 @@ jobs:
           mkdir -p android/app/src/main/res
           mkdir -p android/gradle/wrapper
 
-          # gradle-wrapper.properties
+          curl -fsSL https://raw.githubusercontent.com/nicklockwood/GradleWrapper/main/gradle/wrapper/gradle-wrapper.jar \
+            -o android/gradle/wrapper/gradle-wrapper.jar
+
           cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
           distributionBase=GRADLE_USER_HOME
           distributionPath=wrapper/dists
@@ -46,11 +48,10 @@ jobs:
           zipStorePath=wrapper/dists
           EOF
 
-          # Baixar gradlew real do GitHub
-          curl -fsSL https://raw.githubusercontent.com/gradle/gradle/v8.3.0/gradlew -o android/gradlew
+          curl -fsSL https://raw.githubusercontent.com/gradle/gradle/v8.3.0/gradlew \
+            -o android/gradlew
           chmod +x android/gradlew
 
-          # build.gradle raiz
           cat > android/build.gradle << 'EOF'
           buildscript {
               ext {
@@ -72,13 +73,11 @@ jobs:
           }
           EOF
 
-          # settings.gradle
           cat > android/settings.gradle << 'EOF'
           rootProject.name = 'YTunes'
           include ':app'
           EOF
 
-          # app/build.gradle
           cat > android/app/build.gradle << 'EOF'
           apply plugin: "com.android.application"
           android {
@@ -104,7 +103,6 @@ jobs:
           }
           EOF
 
-          # AndroidManifest
           cat > android/app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -133,8 +131,7 @@ jobs:
           </manifest>
           EOF
 
-          echo "✅ Estrutura android criada com sucesso"
-          ls -la android/
+          echo "Verificando arquivos:"
           ls -la android/gradle/wrapper/
 
       - name: Cache Gradle
