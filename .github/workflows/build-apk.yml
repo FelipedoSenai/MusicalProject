@@ -28,22 +28,17 @@ jobs:
       - name: Instalar dependências
         run: npm install
 
-      - name: Instalar React Native CLI
-        run: npm install -g react-native-cli @react-native-community/cli
-
       - name: Injetar YouTube API Key
         run: |
           sed -i "s/SUA_CHAVE_API_AQUI/${{ secrets.YOUTUBE_API_KEY }}/g" src/utils/youtubeApi.ts
 
-      - name: Gerar pasta android completa
+      - name: Criar projeto React Native base para pegar pasta android
         run: |
-          npx react-native init TempApp --version 0.73.4 --skip-install
-          cp -r TempApp/android ./android
-          rm -rf TempApp
+          npx @react-native-community/cli@latest init YTunesBase --version 0.73.4 --skip-install --directory /tmp/YTunesBase
+          cp -r /tmp/YTunesBase/android ./android
 
-      - name: Copiar arquivos do app para android
+      - name: Substituir AndroidManifest com permissões corretas
         run: |
-          cp android/app/src/main/AndroidManifest.xml android/app/src/main/AndroidManifest.xml.bak
           cat > android/app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -87,7 +82,7 @@ jobs:
           key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: gradle-
 
-      - name: Build APK Release
+      - name: Build APK
         run: |
           cd android
           ./gradlew assembleRelease --no-daemon
